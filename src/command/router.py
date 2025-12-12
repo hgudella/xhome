@@ -16,7 +16,7 @@ from src.command.session import CommandSession
 from src.devices.mqtt_client import MQTTClient
 from src.devices.mqtt_config import MQTTConfig
 from src.devices.config import DeviceConfig
-from src.devices.state import DeviceState
+from src.devices.state import DeviceState, DeviceStateCache
 from src.utils.exceptions import (
     DeviceNotFoundError,
     MQTTPublishError,
@@ -41,7 +41,8 @@ class CommandRouter:
         model_path: str,
         device_config_path: str,
         mqtt_config: MQTTConfig,
-        enable_state_tracking: bool = False
+        enable_state_tracking: bool = False,
+        state_ttl: int = 300
     ):
         """Initialize command router.
         
@@ -50,6 +51,7 @@ class CommandRouter:
             device_config_path: Path to devices.yaml
             mqtt_config: MQTT broker configuration
             enable_state_tracking: Whether to track device states (default: False)
+            state_ttl: Time-to-live for states in seconds (default: 300)
         """
         # Initialize command parser (SLM + device config)
         self.command_parser = CommandParser(
@@ -65,9 +67,12 @@ class CommandRouter:
         
         # State tracking (for User Story 3)
         self.enable_state_tracking = enable_state_tracking
-        self.device_states: dict[str, DeviceState] = {}
+        self.state_cache = DeviceStateCache(default_ttl=state_ttl) if enable_state_tracking else None
         
-        logger.info("CommandRouter initialized")
+        logger.info(
+            f"CommandRouter initialized "
+            f"(state_tracking={'enabled' if enable_state_tracking else 'disabled'})"
+        )
     
     def connect_mqtt(self) -> None:
         """Connect to MQTT broker."""
@@ -122,6 +127,21 @@ class CommandRouter:
             
             # Process each command
             for command in commands:
+                # Check for redundancy if state tracking enabled
+                if self.enable_state_tracking and self.state_cache:
+                    if self.state_cache.is_redundant(
+                        command.device,
+                        command.intent,
+                        command.parameters
+                    ):
+                        logger.info(
+                            f"Skipping redundant command: {command.intent} for {command.device}"
+                        )
+                        session.errors.append(
+                            f"Redundant: {command.device} already in desired state"
+                        )
+                        continue
+                
                 self._publish_command(command, session)
             
             # Mark session complete
@@ -206,21 +226,17 @@ class CommandRouter:
             topic: MQTT topic of state update
             payload: State payload from device
         """
+        if not self.enable_state_tracking or not self.state_cache:
+            return
+        
         # Extract device name from topic (assuming pattern: home/{type}/{name}/state)
         parts = topic.split('/')
         if len(parts) >= 3:
             device_name = parts[2]
             
-            # Update or create device state
-            if device_name in self.device_states:
-                self.device_states[device_name].update(payload)
-            else:
-                self.device_states[device_name] = DeviceState(
-                    device_id=device_name,
-                    state=payload
-                )
-            
-            logger.debug(f"Updated state for {device_name}: {payload}")
+            # Update state cache
+            self.state_cache.update(device_name, payload)
+            logger.debug(f"State update for {device_name}: {payload}")
     
     def get_device_state(self, device_name: str) -> Optional[DeviceState]:
         """Get current state of a device.
@@ -229,9 +245,13 @@ class CommandRouter:
             device_name: Name of device to query
             
         Returns:
-            DeviceState if available, None otherwise
+            DeviceState if available and fresh, None otherwise
         """
-        return self.device_states.get(device_name)
+        if not self.enable_state_tracking or not self.state_cache:
+            logger.debug("State tracking not enabled")
+            return None
+        
+        return self.state_cache.get(device_name)
     
     def cleanup(self) -> None:
         """Clean up resources."""

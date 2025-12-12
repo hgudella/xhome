@@ -4,6 +4,7 @@ Integrates:
 - Feature 001: Voice capture and transcription
 - Feature 002: SLM command understanding and MQTT publishing
 """
+import argparse
 import logging
 import sys
 from pathlib import Path
@@ -33,18 +34,153 @@ def print_banner():
     print("Full End-to-End Pipeline: Voice → Text → Command → MQTT")
     print_separator()
 
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="XHOME - Voice-Controlled Smart Home System",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic usage with default settings
+  python run_full_system.py
+  
+  # Enable state awareness for redundancy detection
+  python run_full_system.py --state-awareness
+  
+  # Text-only mode (transcription without command processing)
+  python run_full_system.py --text-only
+  
+  # Custom MQTT broker
+  python run_full_system.py --mqtt-host 192.168.1.100 --mqtt-port 1883
+  
+  # Disable command processing (transcription only)
+  python run_full_system.py --no-commands
+        """
+    )
+    
+    # Feature toggles
+    parser.add_argument(
+        '--enable-commands',
+        action='store_true',
+        default=True,
+        help='Enable command extraction and MQTT publishing (default: True)'
+    )
+    parser.add_argument(
+        '--no-commands',
+        dest='enable_commands',
+        action='store_false',
+        help='Disable command processing (transcription only)'
+    )
+    parser.add_argument(
+        '--state-awareness',
+        action='store_true',
+        default=False,
+        help='Enable device state tracking and redundancy detection'
+    )
+    parser.add_argument(
+        '--text-only',
+        action='store_true',
+        default=False,
+        help='Text-only mode (no command processing or MQTT)'
+    )
+    
+    # MQTT configuration
+    parser.add_argument(
+        '--mqtt-host',
+        type=str,
+        default='localhost',
+        help='MQTT broker hostname (default: localhost)'
+    )
+    parser.add_argument(
+        '--mqtt-port',
+        type=int,
+        default=1883,
+        help='MQTT broker port (default: 1883)'
+    )
+    parser.add_argument(
+        '--mqtt-username',
+        type=str,
+        default=None,
+        help='MQTT username (optional)'
+    )
+    parser.add_argument(
+        '--mqtt-password',
+        type=str,
+        default=None,
+        help='MQTT password (optional)'
+    )
+    
+    # Model configuration
+    parser.add_argument(
+        '--whisper-model',
+        type=str,
+        default='openai/whisper-base',
+        help='Whisper model to use (default: openai/whisper-base)'
+    )
+    parser.add_argument(
+        '--slm-model',
+        type=str,
+        default='models/Phi-4-Mini-GGUF/Phi-4-mini-instruct-Q4_K_M.gguf',
+        help='SLM model path (default: models/Phi-4-Mini-GGUF/Phi-4-mini-instruct-Q4_K_M.gguf)'
+    )
+    parser.add_argument(
+        '--device-config',
+        type=str,
+        default='config/devices.yaml.example',
+        help='Device configuration file (default: config/devices.yaml.example)'
+    )
+    
+    # State tracking configuration
+    parser.add_argument(
+        '--state-ttl',
+        type=int,
+        default=300,
+        help='Device state time-to-live in seconds (default: 300)'
+    )
+    
+    # Logging
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug logging'
+    )
+    
+    args = parser.parse_args()
+    
+    # Handle mutually exclusive options
+    if args.text_only:
+        args.enable_commands = False
+        args.state_awareness = False
+    
+    return args
+
 def main():
     """Run the full voice-controlled smart home system."""
+    
+    # Parse command-line arguments
+    args = parse_arguments()
+    
+    # Configure logging level
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
     
     print_banner()
     
     # Configuration
     print("📋 Configuration:")
     print("   - Audio: 16kHz, mono, Silero VAD")
-    print("   - Transcription: Whisper (base model)")
-    print("   - SLM: Phi-4-mini-instruct-Q4_K_M")
-    print("   - Devices: config/devices.yaml.example")
-    print("   - MQTT: localhost:1883")
+    print(f"   - Transcription: {args.whisper_model}")
+    if args.enable_commands:
+        print(f"   - SLM: {Path(args.slm_model).name}")
+        print(f"   - Devices: {args.device_config}")
+        print(f"   - MQTT: {args.mqtt_host}:{args.mqtt_port}")
+        if args.state_awareness:
+            print(f"   - State Awareness: Enabled (TTL: {args.state_ttl}s)")
+        else:
+            print("   - State Awareness: Disabled")
+    else:
+        print("   - Command Processing: Disabled (text-only mode)")
     print_separator()
     
     # Initialize components
@@ -53,39 +189,52 @@ def main():
     try:
         # Initialize Whisper engine (Feature 001)
         print("   Loading Whisper model...")
-        whisper_engine = WhisperEngine(model_name="openai/whisper-base", device="cpu")
+        whisper_engine = WhisperEngine(model_name=args.whisper_model, device="cpu")
         print("   ✓ Whisper model loaded")
         
-        # Initialize command router (Feature 002)
-        print("   Loading SLM model...")
-        mqtt_config = MQTTConfig(
-            host="localhost",
-            port=1883
-        )
-        
-        router = CommandRouter(
-            model_path="models/Phi-4-Mini-GGUF/Phi-4-mini-instruct-Q4_K_M.gguf",
-            device_config_path="config/devices.yaml.example",
-            mqtt_config=mqtt_config
-        )
-        print("   ✓ SLM model loaded")
-        
-        # Connect to MQTT broker
-        print("   Connecting to MQTT broker...")
-        router.connect_mqtt()
-        print("   ✓ MQTT broker connected")
+        # Initialize command router if commands enabled (Feature 002)
+        router = None
+        if args.enable_commands:
+            print("   Loading SLM model...")
+            mqtt_config = MQTTConfig(
+                host=args.mqtt_host,
+                port=args.mqtt_port,
+                username=args.mqtt_username,
+                password=args.mqtt_password
+            )
+            
+            router = CommandRouter(
+                model_path=args.slm_model,
+                device_config_path=args.device_config,
+                mqtt_config=mqtt_config,
+                enable_state_tracking=args.state_awareness,
+                state_ttl=args.state_ttl
+            )
+            print("   ✓ SLM model loaded")
+            
+            # Connect to MQTT broker
+            print("   Connecting to MQTT broker...")
+            router.connect_mqtt()
+            print("   ✓ MQTT broker connected")
+        else:
+            print("   ⚠️  Command processing disabled - transcription only")
         
         print_separator()
         print("✅ System Ready!")
         print("\n🎤 Listening for voice commands...")
-        print("   Available devices:")
-        for device_name in router.device_config.devices.keys():
-            print(f"      - {device_name}")
-        print("\n   Example commands:")
-        print("      - 'Turn on the living room light'")
-        print("      - 'Set bedroom light to 75 percent'")
-        print("      - 'Turn off the kitchen light'")
-        print("      - 'Set thermostat to 72 degrees'")
+        
+        if args.enable_commands and router:
+            print("   Available devices:")
+            for device_name in router.device_config.devices.keys():
+                print(f"      - {device_name}")
+            print("\n   Example commands:")
+            print("      - 'Turn on the living room light'")
+            print("      - 'Set bedroom light to 75 percent'")
+            print("      - 'Turn off the kitchen light'")
+            print("      - 'Set thermostat to 72 degrees'")
+        else:
+            print("   Running in text-only mode - just transcribing speech")
+        
         print("\n   Press Ctrl+C to stop")
         print_separator()
         
@@ -94,6 +243,11 @@ def main():
             """Process transcription through command router."""
             text = transcription.text
             print(f"\n🗣️  Heard: \"{text}\"")
+            
+            # Text-only mode - just display transcription
+            if not args.enable_commands or router is None:
+                print("   📝 Transcription complete")
+                return
             
             try:
                 # Process through SLM and publish to MQTT
@@ -144,7 +298,12 @@ def main():
                         print("   💡 Try: 'Turn on the living room light' or 'Set bedroom light to 50 percent'")
                 
                 if session.errors:
-                    print(f"   ⚠️  Errors: {', '.join(session.errors)}")
+                    # Check for redundancy messages
+                    for error in session.errors:
+                        if "Redundant" in error:
+                            print(f"   ℹ️  {error}")
+                        else:
+                            print(f"   ⚠️  Error: {error}")
                     
             except KeyboardInterrupt:
                 raise  # Re-raise to stop the system
@@ -179,7 +338,7 @@ def main():
         
         # Start continuous listening (Feature 001)
         listener = ContinuousListener(
-            model_name="openai/whisper-base",
+            model_name=args.whisper_model,
             device="cpu",
             on_transcription=on_transcription
         )
@@ -208,11 +367,12 @@ def main():
         except:
             pass
         
-        try:
-            router.cleanup()
-            print("   ✓ SLM and MQTT cleaned up")
-        except:
-            pass
+        if router:
+            try:
+                router.cleanup()
+                print("   ✓ SLM and MQTT cleaned up")
+            except:
+                pass
         
         print("\n✅ Shutdown complete")
 
