@@ -1,23 +1,14 @@
-# Audio Transcription CLI - Production Dependencies
-# Generated: 2025-12-09
+# Core dependencies for voice-to-text transcription
+torch>=2.0.0
+torchaudio>=2.0.0
+transformers>=4.30.0
+sounddevice>=0.4.6
+librosa>=0.10.0
+numpy>=1.24.0
 
-# Whisper model for transcription
-openai-whisper==20231117
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
 
-# Audio capture from microphone
-PyAudio==0.2.14
-
-# CLI framework
-click==8.1.7
-
-# Audio file I/O
-soundfile==0.12.1
-
-# Numerical operations and audio processing
-numpy==1.24.3
-
-# Audio resampling
-librosa==0.10.1
-
-# Voice Activity Detection for continuous streaming
-webrtcvad==2.0.10
+# Configuration management
+python-dotenv>=1.0.0
