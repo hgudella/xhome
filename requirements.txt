@@ -1,0 +1,14 @@
+# Core dependencies for voice-to-text transcription
+torch>=2.0.0
+torchaudio>=2.0.0
+transformers>=4.30.0
+sounddevice>=0.4.6
+librosa>=0.10.0
+numpy>=1.24.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Configuration management
+python-dotenv>=1.0.0
