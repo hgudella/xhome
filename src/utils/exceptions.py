@@ -24,3 +24,50 @@ class ValidationError(Exception):
 class ConfigurationError(Exception):
     """Raised when configuration is invalid or missing."""
     pass
+
+
+# Feature 002: SLM and MQTT exceptions
+
+class SLMError(Exception):
+    """Base exception for SLM-related errors."""
+    pass
+
+
+class ModelLoadError(SLMError):
+    """Raised when model fails to load."""
+    pass
+
+
+class InferenceError(SLMError):
+    """Raised when SLM inference fails."""
+    pass
+
+
+class TimeoutError(SLMError):
+    """Raised when SLM inference exceeds timeout."""
+    pass
+
+
+class MQTTError(Exception):
+    """Base exception for MQTT-related errors."""
+    pass
+
+
+class MQTTConnectionError(MQTTError):
+    """Raised when MQTT connection fails."""
+    pass
+
+
+class MQTTPublishError(MQTTError):
+    """Raised when MQTT publish operation fails."""
+    pass
+
+
+class DeviceNotFoundError(Exception):
+    """Raised when device is not found in configuration."""
+    pass
+
+
+class CommandParsingError(Exception):
+    """Raised when command structure is invalid."""
+    pass

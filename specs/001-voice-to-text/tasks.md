@@ -42,7 +42,7 @@
 - [ ] T007 Implement configuration loader in src/utils/config.py (load from .env with validation)
 - [ ] T008 [P] Implement privacy-aware logging utility in src/utils/logging.py (metadata only, no audio/text, structured format)
 - [ ] T009 [P] Create base exception classes in src/utils/exceptions.py (AudioCaptureError, TranscriptionError, SessionError, ValidationError)
-- [ ] T010 Download and verify Tiny Whisper model availability (openai/whisper-tiny ~39MB) via transformers library
+- [ ] T010 Download and verify Whisper model availability (openai/whisper-base ~150MB or openai/whisper-tiny ~39MB) via transformers library and validate all required dependencies (torch>=2.0.0, transformers>=4.30.0, sounddevice>=0.4.6, librosa>=0.10.0) are installed with compatible versions
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

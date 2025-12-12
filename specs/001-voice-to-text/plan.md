@@ -7,7 +7,7 @@
 
 ## Summary
 
-Implement real-time voice capture from microphone with local speech-to-text transcription using the Tiny Whisper model. The system will continuously listen for voice input, buffer audio in memory, and convert speech to text without any cloud dependencies. This establishes the foundation for voice-based home automation control by providing the core input processing pipeline.
+Implement real-time voice capture from microphone with local speech-to-text transcription using the Whisper model (base or tiny variant). The system will continuously listen for voice input, buffer audio in memory, and convert speech to text without any cloud dependencies. This establishes the foundation for voice-based home automation control by providing the core input processing pipeline.
 
 ## Technical Context
 

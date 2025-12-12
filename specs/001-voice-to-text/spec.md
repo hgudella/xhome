@@ -26,7 +26,7 @@ The user speaks into their microphone, and the system continuously listens and c
 
 ### User Story 2 - Speech-to-Text Conversion (Priority: P1)
 
-The system processes captured audio through the Tiny Whisper model and converts speech into accurate text transcription. This enables the user to see what the system understood.
+The system processes captured audio through the Whisper base model (openai/whisper-base) and converts speech into accurate text transcription. This enables the user to see what the system understood.
 
 **Why this priority**: This is equally critical as audio capture - it's the second half of the MVP. Without transcription, captured audio has no value for command processing.
 
@@ -34,7 +34,7 @@ The system processes captured audio through the Tiny Whisper model and converts 
 
 **Acceptance Scenarios**:
 
-1. **Given** audio has been captured, **When** the audio is sent to Tiny Whisper, **Then** text transcription is returned
+1. **Given** audio has been captured, **When** the audio is sent to Whisper, **Then** text transcription is returned
 2. **Given** clear speech is provided, **When** transcription occurs, **Then** the text accurately reflects the spoken words
 3. **Given** audio contains ambient noise, **When** transcription occurs, **Then** the system still produces recognizable text for clear speech
 4. **Given** transcription is in progress, **When** processing completes, **Then** the text is available for downstream use (command routing, display, etc.)
@@ -62,7 +62,7 @@ The system operates in a continuous listening mode where it automatically proces
 
 - What happens when no microphone is available or accessible?
 - How does the system handle extremely loud or distorted audio input?
-- What happens if the Tiny Whisper model fails to load or crashes during transcription?
+- What happens if the Whisper model fails to load or crashes during transcription?
 - How does the system behave when multiple people speak simultaneously?
 - What happens when the user speaks in a language not supported by the model?
 - How does the system handle very long continuous speech (memory constraints)?
@@ -74,7 +74,7 @@ The system operates in a continuous listening mode where it automatically proces
 
 - **FR-001**: System MUST capture audio input from the default system microphone
 - **FR-002**: System MUST support WAV audio format for processing
-- **FR-003**: System MUST use Tiny Whisper model for local speech-to-text inference
+- **FR-003**: System MUST use Whisper model (openai/whisper-base or openai/whisper-tiny) for local speech-to-text inference
 - **FR-004**: System MUST process audio entirely locally without any cloud API calls
 - **FR-005**: System MUST convert captured audio to text transcription
 - **FR-006**: System MUST handle continuous audio streaming from the microphone
@@ -86,7 +86,7 @@ The system operates in a continuous listening mode where it automatically proces
 - **FR-012**: System MUST allow manual start/stop of voice capture
 - **FR-013**: System MUST provide transcribed text output in plain text format
 - **FR-014**: System MUST support configurable audio sample rate and buffer size
-- **FR-015**: System MUST validate that required dependencies (torch, transformers, sounddevice, librosa) are available at startup
+- **FR-015**: System MUST validate that required dependencies (torch, transformers, sounddevice, librosa) are available at startup. **Given** a required dependency is missing **When** the system starts **Then** display clear error message naming the missing dependency and required version **AND** exit with non-zero exit code **AND** log the validation failure. **Given** dependency versions are incompatible **When** validation runs **Then** display warning with current vs required versions.
 
 ### Key Entities
 
@@ -94,7 +94,7 @@ The system operates in a continuous listening mode where it automatically proces
 
 - **AudioBuffer**: Temporary in-memory storage for captured audio data waiting to be transcribed. Contains raw audio samples, duration, and timestamp. Must be cleared after processing to comply with privacy requirements.
 
-- **Transcription**: The text output produced by Tiny Whisper. Attributes include the transcribed text string, confidence score (if available), timestamp, and processing duration.
+- **Transcription**: The text output produced by the Whisper model. Attributes include the transcribed text string, confidence score (if available), timestamp, and processing duration.
 
 - **VoiceSession**: Represents a single voice interaction from start to transcription completion. Tracks session ID, start time, end time, audio duration, transcription result, and any errors encountered.
 
@@ -103,7 +103,7 @@ The system operates in a continuous listening mode where it automatically proces
 ### Measurable Outcomes
 
 - **SC-001**: Users can speak into the microphone and see transcribed text within 3 seconds of finishing speaking
-- **SC-002**: System accurately transcribes clear speech with at least 85% word accuracy for English language input
+- **SC-002**: System accurately transcribes clear speech with at least 85% word accuracy for English language input (measured using Word Error Rate calculation: WER = (substitutions + deletions + insertions) / total_reference_words, where accuracy = 1 - WER)
 - **SC-003**: System processes audio locally without any network calls to external services
 - **SC-004**: System handles continuous operation for at least 30 minutes without memory leaks or performance degradation
 - **SC-005**: 90% of transcription attempts complete successfully when audio quality is good (clear speech, minimal background noise)

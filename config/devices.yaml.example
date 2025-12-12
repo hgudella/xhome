@@ -1,0 +1,81 @@
+# Device Configuration Example
+# Copy this file to devices.yaml and customize for your devices
+
+devices:
+  light:
+    - name: living_room_light
+      aliases:
+        - "living room light"
+        - "lounge light"
+        - "main light"
+      mqtt:
+        command_topic: "home/light/living_room/set"
+        state_topic: "home/light/living_room/state"
+      capabilities:
+        - on_off
+        - brightness
+    
+    - name: bedroom_light
+      aliases:
+        - "bedroom light"
+        - "bed light"
+      mqtt:
+        command_topic: "home/light/bedroom/set"
+        state_topic: "home/light/bedroom/state"
+      capabilities:
+        - on_off
+        - brightness
+    
+    - name: kitchen_light
+      aliases:
+        - "kitchen light"
+        - "cooking light"
+      mqtt:
+        command_topic: "home/light/kitchen/set"
+        state_topic: "home/light/kitchen/state"
+      capabilities:
+        - on_off
+        - brightness
+        - color_temp
+  
+  switch:
+    - name: ceiling_fan
+      aliases:
+        - "fan"
+        - "ceiling fan"
+        - "bedroom fan"
+      mqtt:
+        command_topic: "home/switch/fan/set"
+        state_topic: "home/switch/fan/state"
+      capabilities:
+        - on_off
+    
+    - name: garage_door
+      aliases:
+        - "garage door"
+        - "garage"
+      mqtt:
+        command_topic: "home/switch/garage/set"
+        state_topic: "home/switch/garage/state"
+      capabilities:
+        - on_off
+  
+  thermostat:
+    - name: living_room_thermostat
+      aliases:
+        - "thermostat"
+        - "living room thermostat"
+        - "temperature"
+      mqtt:
+        command_topic: "home/thermostat/living_room/set"
+        state_topic: "home/thermostat/living_room/state"
+      capabilities:
+        - temperature
+        - mode
+
+# MQTT Broker Configuration
+mqtt_broker:
+  host: localhost
+  port: 1883
+  # username: your_username  # Optional
+  # password: your_password  # Optional
